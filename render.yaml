@@ -1,0 +1,34 @@
+databases:
+  - name: ev-fleet-postgres
+    databaseName: app_db
+    user: ev_fleet_user
+    plan: free
+
+services:
+  # Option A (Primary): Fullstack Next.js Dashboard + REST APIs + ML Pipeline + Optimizer
+  - type: web
+    name: ev-fleet-optimization-app
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -H 0.0.0.0 -p $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ev-fleet-postgres
+          property: connectionString
+      - key: MODEL_PATH
+        value: /tmp/ev_models
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      - key: S3_BUCKET_NAME
+        sync: false

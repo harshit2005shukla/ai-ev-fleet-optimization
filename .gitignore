@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Next.js build outputs
+.next/
+out/
+build/
+next-env.d.ts
+
+# Environment secrets (NEVER commit .env)
+.env
+.env.local
+.env.*.local
+
+# Generated telemetry datasets & local ML artifacts
+data/raw/*.csv
+data/raw/*.json
+data/processed/*.csv
+data/processed/*.json
+data/models/*.json
+data/models/*.joblib
+backend/ml/models/*.joblib
+
+# OS & logs
+.DS_Store
+*.log
