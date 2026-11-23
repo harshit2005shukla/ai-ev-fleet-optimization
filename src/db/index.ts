@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import * as schema from "./schema";
 
 const globalForDb = globalThis as typeof globalThis & {
-  __arenaNextJsPostgresqlPool?: Pool;
+  _arenaNextJsPostgresqlPool?: Pool;
 };
 
 function getDatabaseUrl(): string {
@@ -39,13 +39,16 @@ function createPool(): Pool {
   });
 }
 
-export const pool =
-  globalForDb.__arenaNextJsPostgresqlPool ?? createPool();
+export function getPool(): Pool {
+  if (!globalForDb._arenaNextJsPostgresqlPool) {
+    globalForDb._arenaNextJsPostgresqlPool = createPool();
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
+  return globalForDb._arenaNextJsPostgresqlPool;
 }
 
-export const db = drizzle(pool, { schema });
+export function getDb() {
+  return drizzle(getPool(), { schema });
+}
 
 export { schema };
