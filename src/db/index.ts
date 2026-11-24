@@ -2,59 +2,38 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-const globalForDb = globalThis as unknown as {
-  pool?: Pool;
-  db?: ReturnType<typeof drizzle>;
+const rawDatabaseUrl =
+  process.env.DATABASE_URL || "postgresql://localhost:5432/app_db";
+
+// Normalize legacy Render postgres:// scheme to postgresql://
+const databaseUrl = rawDatabaseUrl.startsWith("postgres://")
+  ? rawDatabaseUrl.replace("postgres://", "postgresql://")
+  : rawDatabaseUrl;
+
+const isRemoteSsl =
+  databaseUrl.includes("render.com") ||
+  databaseUrl.includes("neon.tech") ||
+  process.env.DB_SSL === "true";
+
+const globalForDb = globalThis as typeof globalThis & {
+  __arenaNextJsPostgresqlPool?: Pool;
 };
 
-function getDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL;
-
-  if (!url) {
-    throw new Error("DATABASE_URL is required at runtime");
-  }
-
-  return url;
-}
-
-function createPool(): Pool {
-  return new Pool({
-    connectionString: getDatabaseUrl(),
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : undefined,
+export const pool =
+  globalForDb.__arenaNextJsPostgresqlPool ??
+  new Pool({
+    connectionString: databaseUrl,
+    max: 12,
+    idleTimeoutMillis: 30000,
+    ...(isRemoteSsl
+      ? { ssl: { rejectUnauthorized: false } }
+      : {}),
   });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForDb.__arenaNextJsPostgresqlPool = pool;
 }
 
-export function getPool(): Pool {
-  if (!globalForDb.pool) {
-    globalForDb.pool = createPool();
-  }
-
-  return globalForDb.pool;
-}
-
-export function getDb() {
-  if (!globalForDb.db) {
-    globalForDb.db = drizzle(getPool(), {
-      schema,
-    });
-  }
-
-  return globalForDb.db;
-}
-
-/*
- * Backward-compatible exports.
- *
- * Existing API routes import:
- *   import { db } from "@/db";
- *   import { pool } from "@/db";
- *
- * So both names must exist.
- */
-export const pool = getPool();
-export const db = getDb();
+export const db = drizzle(pool, { schema });
 
 export { schema };
